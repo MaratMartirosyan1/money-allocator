@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Money Allocator</title>
+  </head>
+  <body>
+    <script>
+      // Applies the saved theme before first paint, so dark-theme users never
+      // see a flash of light. Kept in sync afterwards by useAppliedTheme.
+      try {
+        var saved = JSON.parse(localStorage.getItem('mny-allocator') || '{}')
+        var theme = saved && saved.state && saved.state.theme
+        if (theme === 'light' || theme === 'dark') {
+          document.documentElement.setAttribute('data-theme', theme)
+        }
+      } catch (e) {
+        /* first visit, or storage blocked — fall back to the OS preference */
+      }
+    </script>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
