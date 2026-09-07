@@ -10,8 +10,8 @@ much each account receives.
 Phases 0–5 are **implemented** — the engine, the store, the canvas, live
 calculation and the validation UX — plus draggable nodes, a collapsible
 sidebar, a theme toggle, and most of phase 6 (diagram management, now split
-across a list page and an editor page). 146 tests
-pass; `typecheck`, `lint` and `build` are clean.
+across a list page and an editor page). Phases 8–10 (mobile layout,
+three-language UI, seeded starter diagrams) are implemented on top.
 
 Still open: JSON export/import (phase 6) and all of phase 7.
 
@@ -24,6 +24,10 @@ Still open: JSON export/import (phase 6) and all of phase 7.
 | State | `zustand` + `persist` middleware (localStorage) |
 | Tests | `vitest` + `@testing-library/react` |
 | v1 scope | Phases 0–5 (single system, auto-saved) |
+| i18n | Hand-rolled dictionaries + `Intl.PluralRules`; no i18n library |
+| Locales | `en`, `ru`, `hy` — English is the key-defining dictionary |
+| Mobile | CSS-only breakpoints; the side panel becomes a bottom sheet |
+| Seeds | Fixed-id starter diagrams, re-asserted into `localStorage` on boot |
 
 Dependencies: `@xyflow/react`, `zustand`
 Dev: `typescript`, `@types/*`, `vitest`, `@testing-library/react`
@@ -252,6 +256,163 @@ Monthly run history (month + income + payout snapshot, kept per month); Sankey
 view of the money flow (`@nivo/sankey` or `d3-sankey`); drag-to-reparent;
 starter templates (50/30/20); CSV export.
 
+### Phase 8 — Mobile ✅
+
+The tool has to be usable on a phone, not merely not-broken on one. Reference
+viewports, in CSS pixels (the only unit that matters — device pixel ratio is
+irrelevant to layout):
+
+| Device | CSS viewport | Why it is in the list |
+|---|---|---|
+| Galaxy Z Fold, folded | **344 × 882** | the narrowest screen anyone will open this on |
+| Galaxy S23 / S24 | 360 × 780 | the most common Android width |
+| iPhone 16 Pro | 402 × 874 | notch + home indicator → safe-area insets |
+| Pixel 8 / 9 | 412 × 915 | tallest of the common phones |
+| Galaxy Z Fold, unfolded | ~768 × 830 | tablet-shaped and *short*; not a big phone |
+
+So three breakpoints, not one: **≤ 900px** (unfolded fold / tablet — the side
+panel stops being a column), **≤ 640px** (phone — the top bar reflows), and
+**≤ 380px** (folded fold — the tightest padding and type). 344px is the number
+every layout is checked against.
+
+Decisions that follow from the device list:
+
+- **`dvh`, not `vh`.** Mobile Safari and Chrome shrink the viewport as their
+  toolbars slide away; `100vh` is the *largest* height, so a `100vh` app shell
+  is permanently taller than the visible area and the top bar scrolls off.
+  `height: 100dvh` with a `100%` fallback.
+- **Safe-area insets.** `viewport-fit=cover` in the viewport meta, then
+  `env(safe-area-inset-*)` padding on the top bar, the list page and the
+  bottom sheet, so the iPhone's notch and home indicator never sit on a
+  control.
+- **The side panel becomes a bottom sheet.** Below 900px it leaves the flex
+  row and is absolutely positioned against the bottom of the canvas, capped at
+  `min(72dvh, 520px)`, sliding up over it. The canvas keeps the full screen,
+  which is the scarce resource. The panel stays mounted and keeps its `inert`
+  when closed — so it slides rather than popping, its scroll position
+  survives, and the existing hamburger and its `aria-controls` wiring carry
+  over unchanged. A grab bar is added for dismissal by thumb; it is
+  `aria-hidden`, being a redundant affordance for a hamburger that already
+  announces the same action.
+- **16px inputs, or iOS zooms.** Safari auto-zooms any focused input with a
+  computed font-size under 16px and does not zoom back out. Every input goes
+  to 16px under `(pointer: coarse)`.
+- **Taller cards on touch, in the layout too.** That font bump grows the node
+  cards, and the tidy-tree layout *estimates* card heights rather than
+  measuring them — so the estimate has to know. `layoutTree` takes a
+  `NodeMetrics` argument (`DESKTOP_METRICS` / `TOUCH_METRICS`); the canvas
+  picks one via `useLayoutMetrics()`, which watches `(pointer: coarse)`. Get
+  this wrong and ranks overlap on phones only.
+- **Node cards keep their 248px width.** The canvas is zoomable, so shrinking
+  the cards buys nothing and would desync the layout constant. `fitView` does
+  the work instead, with a lower `minZoom` so a wide tree still fits on 344px.
+- **The minimap goes.** It costs a quarter of a 402px screen to show a picture
+  of what is already on screen. Hidden below 900px.
+- **44px tap targets** under `(pointer: coarse)` — the node delete `×` is 22px
+  on desktop, which is a coin-flip with a thumb.
+- **The top bar becomes three fixed rows** (name / income / controls) rather
+  than one wrapping row, because what wraps where would otherwise depend on
+  the length of the diagram name and the number of digits in the income —
+  which is how a bar ends up fine in English and broken in Armenian. Three
+  rows cost ~135px of an 874px phone; two would need the controls to share a
+  line, and at 344px the language, theme and panel controls come to ~240px on
+  their own. The three groups are wrapped in `display: contents` elements, so
+  on desktop the bar is still one flat flex row and **no `order` override is
+  needed anywhere** — visual order and DOM order stay the same order, which is
+  the one a keyboard follows.
+- **The group meter's caption gets a fixed two-line box.** Its height feeds the
+  layout estimate, and Russian and Armenian run 20–30% longer than English, so
+  whether it wraps is language-dependent. Pinning the box keeps the estimate
+  true in every language rather than only in the one it was measured in.
+
+React Flow's own touch handling (drag to pan, pinch to zoom) needs nothing
+adding; the work is entirely in making the chrome around it fit.
+
+### Phase 9 — Multilingual: Armenian, Russian, English ✅
+
+Hand-rolled, ~200 lines, no dependency. `react-i18next` brings a loader, a
+namespace system and a suspense boundary to solve problems this app does not
+have: every string is known at build time and there are three of them per key.
+
+```
+src/i18n/
+  locales.ts   Locale union + native labels ('English' / 'Русский' / 'Հայերեն')
+  en.ts        the canonical dictionary — its keys ARE the key type
+  ru.ts hy.ts  typed `Dictionary`, so a missing key is a compile error
+  plural.ts    Intl.PluralRules wrapper
+  index.ts     translate() / useT()
+  format.ts    useFormat() — locale-bound money, percent, relative time
+  issues.ts    Issue code + params → a sentence
+```
+
+Three things make this more than a lookup table:
+
+- **Russian needs three plural forms** (1 счёт / 2 счёта / 5 счётов), Armenian
+  two, English two. So a dictionary value is `string | PluralForms`, and
+  `t(key, { count })` selects the form through `Intl.PluralRules(locale)` —
+  the correct rule for every locale, from the platform, for free. Hand-written
+  `count === 1 ? a : b` is simply wrong in Russian.
+- **The domain layer stops emitting English.** `Issue` carried a
+  pre-formatted `message`, which put user-facing prose inside a pure engine.
+  It now carries `code` + structured `params`, and `i18n/issues.ts` renders
+  the sentence. This is the change the plan should have wanted anyway: the
+  engine is supposed to be rendering-agnostic, and a translated message proves
+  it. The English wording is preserved word for word, so the existing
+  assertions still hold.
+- **Numbers are locale-formatted too.** `Intl.NumberFormat` was being called
+  with `undefined` — the *browser's* locale, not the app's. The domain
+  formatters now take an explicit locale tag and `useFormat()` binds them to
+  the active one, so Armenian gets `1 000 000 ֏` and English `֏1,000,000`.
+  `parsePercentInput` accordingly accepts a decimal comma, which is what a
+  Russian or Armenian keyboard produces.
+
+The chosen locale is persisted with the theme, reflected onto `<html lang>`,
+and defaults from `navigator.language` on a first visit. Each option in the
+switcher is labelled in its own language — someone who has landed on the wrong
+one cannot read the others.
+
+Two dictionary-wide invariants are asserted in tests rather than trusted: every
+locale defines every key (also a compile error, via `Dictionary`), and every
+translation of a message uses exactly the placeholders its English source does
+— a dropped `{name}` renders a sentence with no subject, an added one renders a
+literal brace.
+
+### Phase 10 — Seeded starter diagrams ✅
+
+Four real allocation diagrams ship with the app, so a new browser opens onto
+something worth looking at rather than the generic `starterSystem()`.
+
+- `domain/seeds.data.ts` holds them verbatim, **with their original ids**. A
+  fixed id is the whole mechanism: it is what lets a later release recognise a
+  seed the user already has, instead of adding a fifth copy every boot.
+- `domain/seeds.ts` applies them: any seed id missing from `systems` is
+  inserted and appended to `systemOrder`; if the stored `seedVersion` is older
+  than `SEED_VERSION`, every seed is rewritten from the data file. Bumping
+  `SEED_VERSION` is therefore how a corrected seed reaches people who already
+  have the old one — and it deliberately overwrites their edits to *those four
+  diagrams only*, which is why it is a manual bump and not derived from a
+  content hash.
+- Seeding runs in two places, because there are two ways in: the persist
+  `merge` (a returning browser) and `createInitialState` (a first visit, or
+  storage that failed to parse). Both funnel through the same `applySeeds`.
+- The user's own diagrams are never touched, and `systemOrder` keeps seeds
+  ahead of them.
+- The seeds are a straight copy of one user's `localStorage`, so
+  `scripts/import-seeds.mjs` regenerates the data file from a dumped blob
+  rather than anyone editing 300 lines of JSON by hand. It also refuses to
+  write a tree the engine could not walk — a `childIds` entry pointing at
+  nothing, or a root that is not in `nodes` — which is exactly the mistake
+  hand-transcription makes.
+- Tests treat the seed data as data under test, not as fixtures: every seed
+  must be a well-formed tree, must raise no configuration *errors*, and must
+  conserve money at every node.
+
+**Consequence worth stating plainly:** because the rule is "always ensure
+present", deleting a seeded diagram is not permanent — it comes back on the
+next load. Making deletion stick would mean recording tombstones
+(`dismissedSeedIds`) and checking them before inserting; the hook for that is
+one `if` inside `applySeeds`.
+
 ---
 
 ## 4. Structure
@@ -259,12 +420,15 @@ starter templates (50/30/20); CSV export.
 ```
 src/
   domain/      types.ts money.ts rounding.ts engine.ts validate.ts (+ .test.ts)
+               seeds.ts seeds.data.ts
   store/       useSystemStore.ts selectors.ts
+  i18n/        locales.ts en.ts ru.ts hy.ts plural.ts index.ts format.ts issues.ts
   layout/      treeLayout.ts
-  components/  AllocatorCanvas.tsx
+  components/  AllocatorCanvas.tsx LocaleToggle.tsx
                nodes/RootNode.tsx nodes/AllocationNode.tsx
                IncomeBar.tsx PayoutSummary.tsx IssueList.tsx
   App.tsx
+scripts/       import-seeds.mjs
 ```
 
 ---
@@ -282,3 +446,13 @@ negative. TypeScript, React Flow (own tidy-tree layout), zustand with persist,
 vitest. Phases
 1–2 (engine and store, fully tested) land before any UI, because the math is the
 risk, not the rendering.
+
+On top of that: the UI is **fully usable on a phone** — three breakpoints down
+to the 344px folded Galaxy Z Fold, `dvh` heights, safe-area insets, a bottom
+sheet instead of a side column, and a layout that knows its cards get taller
+when inputs go to 16px for iOS. It speaks **English, Russian and Armenian**
+through hand-rolled dictionaries with real `Intl.PluralRules` plurals, which
+forced the engine to stop emitting English prose and start emitting issue
+codes plus params. And it **seeds four fixed-id starter diagrams** into
+`localStorage` on every boot, inserting what is missing and rewriting all four
+when `SEED_VERSION` is bumped.

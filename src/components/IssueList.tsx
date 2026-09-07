@@ -1,5 +1,7 @@
 import { getChildren, partitionGroup } from '../domain/tree'
 import type { Issue } from '../domain/types'
+import { useT } from '../i18n'
+import { issueMessageWith } from '../i18n/issues'
 import { useActiveSystem, useIssues } from '../store/selectors'
 import { useAllocatorStore } from '../store/useAllocatorStore'
 
@@ -10,6 +12,7 @@ const AUTO_FIXABLE = new Set<Issue['code']>([
 ])
 
 export function IssueList() {
+  const t = useT()
   const system = useActiveSystem()
   const issues = useIssues()
   const selectNode = useAllocatorStore((s) => s.selectNode)
@@ -42,24 +45,24 @@ export function IssueList() {
     return (
       <section className="panel">
         <header className="panel__head">
-          <h2>Checks</h2>
+          <h2>{t('checks.title')}</h2>
         </header>
-        <p className="panel__ok">Everything adds up.</p>
+        <p className="panel__ok">{t('checks.allGood')}</p>
       </section>
     )
   }
 
   const render = (issue: Issue, index: number) => {
-    const label = system.nodes[issue.nodeId]?.name.trim() || 'Untitled'
+    const label = system.nodes[issue.nodeId]?.name.trim() || t('common.untitled')
     return (
       <li key={`${issue.code}-${issue.nodeId}-${index}`} className={`issue issue--${issue.level}`}>
         <button
           type="button"
           className="issue__body"
           onClick={() => selectNode(issue.nodeId)}
-          title={`Go to ${label}`}
+          title={t('checks.goTo', { name: label })}
         >
-          {issue.message}
+          {issueMessageWith(t, issue)}
         </button>
         {AUTO_FIXABLE.has(issue.code) ? (
           <button
@@ -67,7 +70,7 @@ export function IssueList() {
             className="issue__fix"
             onClick={() => giveRemainderAHome(issue.nodeId)}
           >
-            Absorb it
+            {t('checks.absorb')}
           </button>
         ) : null}
       </li>
@@ -77,9 +80,11 @@ export function IssueList() {
   return (
     <section className="panel">
       <header className="panel__head">
-        <h2>Checks</h2>
+        <h2>{t('checks.title')}</h2>
         <span className="panel__count">
-          {errors.length > 0 ? `${errors.length} to fix` : `${warnings.length} note${warnings.length === 1 ? '' : 's'}`}
+          {errors.length > 0
+            ? t('checks.toFix', { count: errors.length })
+            : t('checks.notes', { count: warnings.length })}
         </span>
       </header>
       <ul className="issues">

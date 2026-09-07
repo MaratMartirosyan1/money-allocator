@@ -2,7 +2,14 @@ import { describe, expect, it } from 'vitest'
 import { createNode, emptySystem, starterSystem } from '../domain/factory'
 import { getChildren } from '../domain/tree'
 import type { AllocNode, AllocationSystem } from '../domain/types'
-import { NODE_SEP, NODE_WIDTH, estimateHeight, layoutTree } from './treeLayout'
+import {
+  DESKTOP_METRICS,
+  NODE_SEP,
+  NODE_WIDTH,
+  TOUCH_METRICS,
+  estimateHeight,
+  layoutTree,
+} from './treeLayout'
 import { tidyTree } from './tidyTree'
 
 function addChild(
@@ -237,5 +244,42 @@ describe('tidyTree', () => {
 
     const positions = tidyTree(system, opts)
     expect(Object.keys(positions)).toHaveLength(3)
+  })
+})
+
+describe('touch metrics', () => {
+  const system = starterSystem()
+
+  it('estimates taller cards than the desktop metrics', () => {
+    // 16px inputs and 44px tap targets make every card taller; if this stops
+    // being true, TOUCH_METRICS has silently stopped doing its job.
+    for (const node of Object.values(system.nodes)) {
+      expect(estimateHeight(node, TOUCH_METRICS)).toBeGreaterThan(
+        estimateHeight(node, DESKTOP_METRICS),
+      )
+    }
+  })
+
+  it('keeps a rank vertical gap clear of the taller cards', () => {
+    const { nodes } = layoutTree(system, TOUCH_METRICS)
+
+    const root = nodes.find((n) => n.data.isRoot)
+    const child = nodes.find((n) => !n.data.isRoot)
+    if (!root || !child) throw new Error('expected a root and a child')
+
+    const rootNode = system.nodes[system.rootId]
+    if (!rootNode) throw new Error('missing root')
+
+    expect(child.position.y - root.position.y).toBeGreaterThanOrEqual(
+      estimateHeight(rootNode, TOUCH_METRICS),
+    )
+  })
+
+  it('lays out the same shape as the desktop metrics, only roomier', () => {
+    const desktop = layoutTree(system, DESKTOP_METRICS)
+    const touch = layoutTree(system, TOUCH_METRICS)
+
+    expect(touch.nodes.map((n) => n.id)).toEqual(desktop.nodes.map((n) => n.id))
+    expect(touch.edges.map((e) => e.id)).toEqual(desktop.edges.map((e) => e.id))
   })
 })

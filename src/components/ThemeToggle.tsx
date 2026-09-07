@@ -1,3 +1,5 @@
+import { useT } from '../i18n'
+import type { MessageKey } from '../i18n/en'
 import type { ThemeMode } from '../store/useAllocatorStore'
 import { useAllocatorStore } from '../store/useAllocatorStore'
 
@@ -43,33 +45,37 @@ function AutoIcon() {
 
 const OPTIONS: Array<{
   mode: ThemeMode
-  label: string
+  labelKey: MessageKey
   icon: () => React.ReactElement
 }> = [
-  { mode: 'light', label: 'Light', icon: SunIcon },
-  { mode: 'dark', label: 'Dark', icon: MoonIcon },
-  { mode: 'system', label: 'Match system', icon: AutoIcon },
+  { mode: 'light', labelKey: 'theme.light', icon: SunIcon },
+  { mode: 'dark', labelKey: 'theme.dark', icon: MoonIcon },
+  { mode: 'system', labelKey: 'theme.system', icon: AutoIcon },
 ]
 
 export function ThemeToggle() {
+  const t = useT()
   const theme = useAllocatorStore((s) => s.theme)
   const setTheme = useAllocatorStore((s) => s.setTheme)
 
   return (
-    <div className="theme-toggle" role="group" aria-label="Theme">
-      {OPTIONS.map(({ mode, label, icon: Icon }) => (
-        <button
-          key={mode}
-          type="button"
-          title={label}
-          aria-label={label}
-          aria-pressed={theme === mode}
-          className={theme === mode ? 'is-active' : ''}
-          onClick={() => setTheme(mode)}
-        >
-          <Icon />
-        </button>
-      ))}
+    <div className="theme-toggle" role="group" aria-label={t('theme.group')}>
+      {OPTIONS.map(({ mode, labelKey, icon: Icon }) => {
+        const label = t(labelKey)
+        return (
+          <button
+            key={mode}
+            type="button"
+            title={label}
+            aria-label={label}
+            aria-pressed={theme === mode}
+            className={theme === mode ? 'is-active' : ''}
+            onClick={() => setTheme(mode)}
+          >
+            <Icon />
+          </button>
+        )
+      })}
     </div>
   )
 }

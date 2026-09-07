@@ -1,9 +1,11 @@
+import { useT } from '../../i18n'
+import type { MessageKey } from '../../i18n/en'
 import type { Mode } from '../../domain/types'
 
-const OPTIONS: Array<{ mode: Mode; label: string; title: string }> = [
-  { mode: 'percent', label: '%', title: 'A percentage of the parent amount' },
-  { mode: 'fixed', label: 'Fixed', title: 'A fixed amount, taken off the top' },
-  { mode: 'auto', label: 'Auto', title: 'Takes whatever the siblings leave over' },
+const OPTIONS: Array<{ mode: Mode; labelKey: MessageKey; titleKey: MessageKey }> = [
+  { mode: 'percent', labelKey: 'mode.percent', titleKey: 'mode.percentTitle' },
+  { mode: 'fixed', labelKey: 'mode.fixed', titleKey: 'mode.fixedTitle' },
+  { mode: 'auto', labelKey: 'mode.auto', titleKey: 'mode.autoTitle' },
 ]
 
 export function ModeToggle({
@@ -13,18 +15,20 @@ export function ModeToggle({
   value: Mode
   onChange: (mode: Mode) => void
 }) {
+  const t = useT()
+
   return (
-    <div className="mode-toggle nodrag" role="group" aria-label="Allocation mode">
+    <div className="mode-toggle nodrag" role="group" aria-label={t('mode.group')}>
       {OPTIONS.map((option) => (
         <button
           key={option.mode}
           type="button"
-          title={option.title}
+          title={t(option.titleKey)}
           aria-pressed={value === option.mode}
           className={value === option.mode ? 'is-active' : ''}
           onClick={() => onChange(option.mode)}
         >
-          {option.label}
+          {t(option.labelKey)}
         </button>
       ))}
     </div>

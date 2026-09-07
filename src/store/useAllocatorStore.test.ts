@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { getChildren } from '../domain/tree'
-import { createInitialState, useAllocatorStore } from './useAllocatorStore'
+import {
+  createInitialState,
+  createSeededState,
+  useAllocatorStore,
+} from './useAllocatorStore'
+import { SEED_IDS, SEED_VERSION } from '../domain/seeds'
 import { allocationOf } from './selectors'
 
 const get = () => useAllocatorStore.getState()
@@ -492,5 +497,59 @@ describe('theme', () => {
     expect(get().theme).toBe('dark')
     get().setTheme('light')
     expect(get().theme).toBe('light')
+  })
+})
+
+describe('seeding', () => {
+  it('is not part of the bare initial state, so tests stay deterministic', () => {
+    const bare = createInitialState()
+    expect(bare.systemOrder).toHaveLength(1)
+    expect(bare.seedVersion).toBe(0)
+  })
+
+  it('is part of what a first visit actually gets', () => {
+    const first = createSeededState()
+
+    for (const id of SEED_IDS) expect(first.systems[id]).toBeDefined()
+    expect(first.seedVersion).toBe(SEED_VERSION)
+    // The starter diagram is still there — the seeds add to it, never replace
+    // it, so there is something to open even with an empty seed file.
+    expect(first.systemOrder.length).toBe(SEED_IDS.length + 1)
+    expect(first.systems[first.activeSystemId]).toBeDefined()
+  })
+
+  it('re-asserts the seeds when a stored blob is rehydrated', async () => {
+    // A browser that used the app before the seeds shipped: one diagram of
+    // its own, no seedVersion at all.
+    const mine = createInitialState()
+    localStorage.setItem(
+      'mny-allocator',
+      JSON.stringify({
+        version: 1,
+        state: {
+          systems: mine.systems,
+          systemOrder: mine.systemOrder,
+          activeSystemId: mine.activeSystemId,
+          income: 250_000,
+          sidebarOpen: true,
+          theme: 'system',
+          locale: 'en',
+        },
+      }),
+    )
+
+    await useAllocatorStore.persist.rehydrate()
+
+    for (const id of SEED_IDS) expect(get().systems[id]).toBeDefined()
+    // Whatever else it does, rehydration must not lose what was saved.
+    expect(get().systems[mine.activeSystemId]).toBeDefined()
+    expect(get().income).toBe(250_000)
+    expect(get().seedVersion).toBe(SEED_VERSION)
+  })
+
+  it('defaults the language from the browser and persists a change', () => {
+    expect(get().locale).toBe('en')
+    get().setLocale('hy')
+    expect(get().locale).toBe('hy')
   })
 })

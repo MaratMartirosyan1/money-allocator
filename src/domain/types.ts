@@ -60,12 +60,33 @@ export type IssueCode =
   | 'PERCENT_CLAMPED'
   | 'ZERO_ALLOCATION'
 
+/**
+ * Everything a sentence about an issue might need to name. Deliberately
+ * *structured* rather than a formatted string: the engine is a pure function
+ * and has no business deciding which language the user reads. `i18n/issues.ts`
+ * turns a code plus these into prose.
+ */
+export interface IssueParams {
+  /** The node the sentence is about — usually the anchored node's own name. */
+  name?: string
+  /** A second node, when the sentence mentions two. */
+  otherName?: string
+  /** A percentage, 0–100+, unrounded. */
+  percent?: number
+  /** The leftover percentage, for the unallocated-remainder message. */
+  remainder?: number
+  /** How many of something — children, orphans, automatic siblings. */
+  count?: number
+  /** Money actually available, in minor units. */
+  available?: number
+}
+
 export interface Issue {
   /** The node the issue is anchored to — a parent for group-level rules. */
   nodeId: string
   level: IssueLevel
   code: IssueCode
-  message: string
+  params: IssueParams
 }
 
 export interface Payout {

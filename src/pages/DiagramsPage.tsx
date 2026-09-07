@@ -1,36 +1,43 @@
 import { Link, useNavigate } from 'react-router-dom'
-import { formatAmount } from '../domain/money'
-import { formatRelativeTime } from '../domain/time'
 import { getChildren } from '../domain/tree'
 import type { AllocationSystem } from '../domain/types'
+import { useT, type Translate } from '../i18n'
+import { useFormat, type Formatters } from '../i18n/format'
+import { LocaleToggle } from '../components/LocaleToggle'
 import { ThemeToggle } from '../components/ThemeToggle'
 import { useAllocatorStore } from '../store/useAllocatorStore'
 
 /** "Charity 10%", "Rent 300,000", "Living auto" — the top-level split. */
-function splitSummary(system: AllocationSystem): string[] {
+function splitSummary(
+  system: AllocationSystem,
+  t: Translate,
+  format: Formatters,
+): string[] {
   return getChildren(system, system.rootId).map((child) => {
-    const label = child.name.trim() || 'Untitled'
+    const label = child.name.trim() || t('common.untitled')
     if (child.mode === 'percent') return `${label} ${child.value}%`
     if (child.mode === 'fixed') {
-      return `${label} ${formatAmount(child.value, system.currencyDecimals)}`
+      return `${label} ${format.amount(child.value, system.currencyDecimals)}`
     }
-    return `${label} auto`
+    return `${label} ${t('common.auto')}`
   })
 }
 
 function DiagramCard({ system }: { system: AllocationSystem }) {
+  const t = useT()
+  const format = useFormat(t)
   const navigate = useNavigate()
   const renameSystem = useAllocatorStore((s) => s.renameSystem)
   const duplicateSystem = useAllocatorStore((s) => s.duplicateSystem)
   const deleteSystem = useAllocatorStore((s) => s.deleteSystem)
 
-  const name = system.name.trim() || 'Untitled'
+  const name = system.name.trim() || t('common.untitled')
   const nodes = Object.keys(system.nodes).length
   const accounts = Object.values(system.nodes).filter(
     (n) => n.childIds.length === 0,
   ).length
 
-  const parts = splitSummary(system)
+  const parts = splitSummary(system, t, format)
   const shown = parts.slice(0, 3)
   const extra = parts.length - shown.length
 
@@ -39,55 +46,56 @@ function DiagramCard({ system }: { system: AllocationSystem }) {
       <input
         className="card__name"
         value={system.name}
-        placeholder="Untitled diagram"
-        aria-label={`Name of ${name}`}
+        placeholder={t('topbar.untitledDiagram')}
+        aria-label={t('card.nameOf', { name })}
         onChange={(e) => renameSystem(system.id, e.target.value)}
       />
 
       <p className="card__split">
         {parts.length === 0 ? (
-          <span className="card__split--empty">No categories yet</span>
+          <span className="card__split--empty">{t('card.noCategories')}</span>
         ) : (
           <>
             {shown.join(' · ')}
-            {extra > 0 ? ` · +${extra} more` : ''}
+            {extra > 0 ? ` · ${t('card.more', { count: extra })}` : ''}
           </>
         )}
       </p>
 
       <p className="card__stats">
-        {accounts} {accounts === 1 ? 'account' : 'accounts'} · {nodes} nodes
+        {t('card.accounts', { count: accounts })} ·{' '}
+        {t('card.nodes', { count: nodes })}
       </p>
 
       <p className="card__saved">
-        Saved · edited {formatRelativeTime(system.updatedAt)}
+        {t('card.savedEdited', { when: format.relativeTime(system.updatedAt) })}
       </p>
 
       <div className="card__actions">
         <Link className="btn btn--primary" to={`/d/${system.id}`}>
-          Open
+          {t('common.open')}
         </Link>
         <button
           type="button"
           className="btn"
-          aria-label={`Duplicate ${name}`}
-          title="Duplicate"
+          aria-label={t('card.duplicateOf', { name })}
+          title={t('common.duplicate')}
           onClick={() => duplicateSystem(system.id)}
         >
-          Duplicate
+          {t('common.duplicate')}
         </button>
         <button
           type="button"
           className="btn btn--danger"
-          aria-label={`Delete ${name}`}
-          title="Delete"
+          aria-label={t('card.deleteOf', { name })}
+          title={t('common.delete')}
           onClick={() => {
-            if (window.confirm(`Delete "${name}"? This cannot be undone.`)) {
+            if (window.confirm(t('card.deleteConfirm', { name }))) {
               deleteSystem(system.id)
             }
           }}
         >
-          Delete
+          {t('common.delete')}
         </button>
       </div>
 
@@ -106,6 +114,7 @@ function DiagramCard({ system }: { system: AllocationSystem }) {
 
 /** The landing page: every saved diagram, and the way to make more. */
 export function DiagramsPage() {
+  const t = useT()
   const systems = useAllocatorStore((s) => s.systems)
   const systemOrder = useAllocatorStore((s) => s.systemOrder)
   const createSystem = useAllocatorStore((s) => s.createSystem)
@@ -125,37 +134,35 @@ export function DiagramsPage() {
           <span className="topbar__mark" aria-hidden="true">
             ⑃
           </span>
-          Money Allocator
+          {t('app.name')}
         </span>
-        <ThemeToggle />
+        <div className="page__tools">
+          <LocaleToggle />
+          <ThemeToggle />
+        </div>
       </header>
 
       <main className="page__body">
         <div className="page__title-row">
           <div>
-            <h1 className="page__title">Diagrams</h1>
-            <p className="page__subtitle">
-              Each diagram is a way of splitting your monthly income. Everything
-              is saved in this browser as you edit — no account, no server.
-            </p>
+            <h1 className="page__title">{t('list.title')}</h1>
+            <p className="page__subtitle">{t('list.subtitle')}</p>
           </div>
           {/* The empty state carries its own call to action; two identical
               buttons on one screen would just be noise. */}
           {isEmpty ? null : (
             <button type="button" className="btn btn--primary" onClick={create}>
-              + New diagram
+              {t('common.newDiagram')}
             </button>
           )}
         </div>
 
         {isEmpty ? (
           <div className="empty">
-            <p className="empty__title">No diagrams yet</p>
-            <p className="empty__body">
-              Create one to map out where each month&rsquo;s income goes.
-            </p>
+            <p className="empty__title">{t('list.emptyTitle')}</p>
+            <p className="empty__body">{t('list.emptyBody')}</p>
             <button type="button" className="btn btn--primary" onClick={create}>
-              + New diagram
+              {t('common.newDiagram')}
             </button>
           </div>
         ) : (

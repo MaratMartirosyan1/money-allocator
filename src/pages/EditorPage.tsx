@@ -15,6 +15,7 @@ export function EditorPage() {
   const activeSystemId = useAllocatorStore((s) => s.activeSystemId)
   const selectSystem = useAllocatorStore((s) => s.selectSystem)
   const sidebarOpen = useAllocatorStore((s) => s.sidebarOpen)
+  const toggleSidebar = useAllocatorStore((s) => s.toggleSidebar)
 
   // The store's actions all operate on the open diagram, so the URL is pushed
   // into it here. A layout effect means the mismatched commit below is never
@@ -44,6 +45,25 @@ export function EditorPage() {
           className={`app__side ${sidebarOpen ? 'is-open' : 'is-closed'}`}
           inert={!sidebarOpen}
         >
+          {/*
+            On a phone the panel is a bottom sheet, and a sheet needs a grab
+            bar to read as one — swiping or tapping it closes the sheet without
+            reaching back up to the top bar.
+
+            It is deliberately kept out of the accessibility tree: it is a
+            redundant pointer affordance for the hamburger, which already
+            exposes this action with `aria-controls`. Announcing two "hide
+            panels" buttons would be worse than announcing one.
+          */}
+          <button
+            type="button"
+            className="app__side-handle"
+            tabIndex={-1}
+            aria-hidden="true"
+            onClick={toggleSidebar}
+          >
+            <span className="app__side-grip" />
+          </button>
           <div className="app__side-inner">
             <PayoutSummary />
             <IssueList />

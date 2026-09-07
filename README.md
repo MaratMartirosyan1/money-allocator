@@ -34,6 +34,45 @@ npm run dev
 Everything is saved to `localStorage` as you edit — there is no backend and
 nothing leaves the browser.
 
+## Languages
+
+The interface is available in **English, Русский and Հայերեն**, switchable from
+the header on any screen and remembered with your other preferences. Numbers,
+currency and "3 minutes ago" follow the chosen language too, and plurals go
+through `Intl.PluralRules`, so Russian gets all three of its forms rather than
+a guess.
+
+Translations live in `src/i18n/`. English is the source dictionary and its keys
+*are* the key type, so a locale missing a key is a compile error, not a blank
+label at runtime.
+
+## On a phone
+
+The whole app works on a phone, down to a folded Galaxy Z Fold at 344px. The
+top bar reflows into three rows, the payouts and checks panel becomes a bottom
+sheet you swipe away, tap targets and inputs grow for touch — the last of which
+also stops iOS zooming in on every field it focuses — and the canvas pans and
+pinch-zooms as you would expect. Safe-area insets keep controls clear of the
+iPhone's notch and home indicator.
+
+## Starter diagrams
+
+Four allocation diagrams ship with the app and are re-asserted into browser
+storage on every load, so a fresh browser opens onto something real. They are
+matched by fixed id, so having them already does not create duplicates; a
+`SEED_VERSION` bump in `src/domain/seeds.ts` is what pushes a correction out to
+people who already have them. Because the rule is "always present", deleting a
+starter diagram is not permanent — it returns on the next load.
+
+To change them, dump the `mny-allocator` localStorage value to a file and run:
+
+```sh
+node scripts/import-seeds.mjs .claude/seed-localstorage.json
+```
+
+which regenerates `src/domain/seeds.data.ts` and refuses to write a tree the
+engine could not walk.
+
 ## Pages
 
 | Route | Page |
@@ -133,11 +172,18 @@ src/
     engine.ts      computeAllocation — one DFS, all the semantics
     validate.ts    static, income-independent checks
     factory.ts     node and system constructors
+    seeds.ts       the starter diagrams and how they are installed
   store/       zustand + persist, normalized flat node map
+  i18n/        en / ru / hy dictionaries, plurals, locale-bound formatters
   layout/      tidy-tree placement → React Flow positions
   pages/       DiagramsPage (the list), EditorPage (one diagram)
   components/  canvas, node cards, payout table, checks panel
 ```
+
+The engine reports issues as a **code plus structured params**, never as a
+finished sentence — `i18n/issues.ts` turns those into prose. A pure function
+has no business deciding which language its caller reads, and three languages
+is what made that obvious.
 
 `domain/` is the load-bearing part and knows nothing about rendering, which is
 why the allocation rules are exhaustively testable and the view is swappable.

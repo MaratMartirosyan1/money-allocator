@@ -1,7 +1,8 @@
 import { Handle, Position, type NodeProps } from '@xyflow/react'
-import { formatMoney, formatPercent } from '../../domain/money'
 import { getChildren } from '../../domain/tree'
 import { percentHeadroom } from '../../domain/validate'
+import { useT } from '../../i18n'
+import { useFormat } from '../../i18n/format'
 import type { FlowNode } from '../../layout/treeLayout'
 import { useActiveSystem, useAllocation, useNodeIssues } from '../../store/selectors'
 import { useAllocatorStore } from '../../store/useAllocatorStore'
@@ -12,6 +13,8 @@ import { ValueField } from './ValueField'
 
 export function AllocationNode({ data }: NodeProps<FlowNode>) {
   const nodeId = data.nodeId
+  const t = useT()
+  const format = useFormat(t)
   const system = useActiveSystem()
   const result = useAllocation()
   const issuesByNode = useNodeIssues()
@@ -37,10 +40,8 @@ export function AllocationNode({ data }: NodeProps<FlowNode>) {
   const handleDelete = () => {
     // Deleting a branch takes its whole subtree with it, so say so first.
     if (descendantCount > 0) {
-      const label = node.name.trim() || 'this node'
-      const ok = window.confirm(
-        `Delete ${label} and everything under it?`,
-      )
+      const label = node.name.trim() || t('node.thisNode')
+      const ok = window.confirm(t('node.deleteSubtree', { name: label }))
       if (!ok) return
     }
     removeNode(nodeId)
@@ -57,16 +58,16 @@ export function AllocationNode({ data }: NodeProps<FlowNode>) {
         <input
           className="node__name nodrag"
           value={node.name}
-          placeholder="Untitled"
-          aria-label="Node name"
+          placeholder={t('common.untitled')}
+          aria-label={t('node.nameLabel')}
           onChange={(e) => renameNode(nodeId, e.target.value)}
         />
         <IssueBadge issues={issuesByNode[nodeId]} />
         <button
           type="button"
           className="node__delete nodrag"
-          title="Delete node"
-          aria-label="Delete node"
+          title={t('node.delete')}
+          aria-label={t('node.delete')}
           onClick={handleDelete}
         >
           ×
@@ -77,8 +78,8 @@ export function AllocationNode({ data }: NodeProps<FlowNode>) {
 
       {node.mode === 'auto' ? (
         <div className="auto-note">
-          Takes the remainder
-          <strong>{formatPercent(ofParent)}</strong>
+          {t('node.takesRemainder')}
+          <strong>{format.percent(ofParent)}</strong>
         </div>
       ) : (
         <ValueField
@@ -92,9 +93,11 @@ export function AllocationNode({ data }: NodeProps<FlowNode>) {
       )}
 
       <div className="node__amount">
-        {formatMoney(amount, system.currency, system.currencyDecimals)}
+        {format.money(amount, system.currency, system.currencyDecimals)}
         <span className="node__of-income">
-          {ofIncome === null ? '' : `${formatPercent(ofIncome)} of income`}
+          {ofIncome === null
+            ? ''
+            : t('node.ofIncome', { percent: format.percent(ofIncome) })}
         </span>
       </div>
 
@@ -110,7 +113,7 @@ export function AllocationNode({ data }: NodeProps<FlowNode>) {
         className="node__add nodrag"
         onClick={() => addChild(nodeId)}
       >
-        + Add child
+        {t('common.addChild')}
       </button>
 
       <Handle type="source" position={Position.Bottom} isConnectable={false} />

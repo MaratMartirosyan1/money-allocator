@@ -1,10 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import {
-  formatAmount,
-  parseMoneyInput,
-  parsePercentInput,
-} from '../../domain/money'
+import { parseMoneyInput, parsePercentInput } from '../../domain/money'
 import type { Mode } from '../../domain/types'
+import { useT } from '../../i18n'
+import { useFormat } from '../../i18n/format'
 
 /**
  * The editable value of a node. Percentages are clamped to the group's
@@ -27,19 +25,21 @@ export function ValueField({
   decimals: number
   onCommit: (value: number) => void
 }) {
+  const t = useT()
+  const format = useFormat(t)
   const isPercent = mode === 'percent'
-  const format = (v: number) =>
-    isPercent ? String(v) : formatAmount(v, decimals)
+  const formatValue = (v: number) =>
+    isPercent ? String(v) : format.amount(v, decimals)
 
-  const [text, setText] = useState(() => format(value))
+  const [text, setText] = useState(() => formatValue(value))
   const focused = useRef(false)
 
   // Re-sync when the value changes from elsewhere (mode switch, undo, reset)
   // but never while the user is mid-edit in this field.
   useEffect(() => {
-    if (!focused.current) setText(format(value))
+    if (!focused.current) setText(formatValue(value))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value, mode, decimals])
+  }, [value, mode, decimals, format])
 
   const handleChange = (raw: string) => {
     if (raw.trim() === '') {
@@ -64,10 +64,10 @@ export function ValueField({
   return (
     <label className="value-field">
       <span className="value-field__label">
-        {isPercent ? 'Share' : 'Amount'}
+        {isPercent ? t('value.share') : t('value.amount')}
         {isPercent && headroom < 100 ? (
-          <em title="Percentage points still free in this group">
-            {headroom} free
+          <em title={t('value.freeTitle')}>
+            {t('value.free', { count: headroom })}
           </em>
         ) : null}
       </span>
@@ -77,13 +77,13 @@ export function ValueField({
           type="text"
           inputMode="decimal"
           value={text}
-          aria-label={isPercent ? 'Percentage share' : 'Fixed amount'}
+          aria-label={isPercent ? t('value.percentLabel') : t('value.fixedLabel')}
           onFocus={() => {
             focused.current = true
           }}
           onBlur={() => {
             focused.current = false
-            setText(format(value))
+            setText(formatValue(value))
           }}
           onChange={(e) => handleChange(e.target.value)}
         />

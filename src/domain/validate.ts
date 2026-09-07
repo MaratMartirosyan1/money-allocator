@@ -19,7 +19,7 @@ export function validateSystem(system: AllocationSystem): Issue[] {
       nodeId: system.rootId,
       level: 'error',
       code: 'MISSING_ROOT',
-      message: 'This system has no root node.',
+      params: {},
     })
     return issues
   }
@@ -38,7 +38,7 @@ export function validateSystem(system: AllocationSystem): Issue[] {
         nodeId: node.id,
         level: 'error',
         code: 'PERCENT_SUM_EXCEEDS_100',
-        message: `Children of "${node.name}" add up to ${round2(percentTotal)}% — siblings cannot exceed 100%.`,
+        params: { name: node.name, percent: round2(percentTotal) },
       })
     }
 
@@ -47,7 +47,7 @@ export function validateSystem(system: AllocationSystem): Issue[] {
         nodeId: node.id,
         level: 'warning',
         code: 'MULTIPLE_AUTO_SIBLINGS',
-        message: `"${node.name}" has ${autoKids.length} automatic children — the remainder is split evenly between them.`,
+        params: { name: node.name, count: autoKids.length },
       })
     }
 
@@ -57,14 +57,18 @@ export function validateSystem(system: AllocationSystem): Issue[] {
           nodeId: node.id,
           level: 'warning',
           code: 'FIXED_WITHOUT_AUTO_SIBLING',
-          message: `"${node.name}" has fixed children but no automatic one, so leftover money has nowhere to go.`,
+          params: { name: node.name },
         })
       } else if (percentTotal < 100) {
         issues.push({
           nodeId: node.id,
           level: 'warning',
           code: 'UNALLOCATED_REMAINDER',
-          message: `Children of "${node.name}" claim only ${round2(percentTotal)}% — the remaining ${round2(100 - percentTotal)}% stays unallocated.`,
+          params: {
+            name: node.name,
+            percent: round2(percentTotal),
+            remainder: round2(100 - percentTotal),
+          },
         })
       }
     }
@@ -76,7 +80,7 @@ export function validateSystem(system: AllocationSystem): Issue[] {
           nodeId: child.id,
           level: 'error',
           code: 'INVALID_PERCENT',
-          message: `"${child.name}" has an invalid percentage.`,
+          params: { name: child.name },
         })
       }
     }
@@ -86,7 +90,7 @@ export function validateSystem(system: AllocationSystem): Issue[] {
           nodeId: child.id,
           level: 'error',
           code: 'INVALID_FIXED',
-          message: `"${child.name}" has an invalid fixed amount.`,
+          params: { name: child.name },
         })
       }
     }
@@ -102,7 +106,7 @@ export function validateSystem(system: AllocationSystem): Issue[] {
           nodeId: child.id,
           level: 'warning',
           code: 'DUPLICATE_SIBLING_NAME',
-          message: `Two children of "${node.name}" are both called "${child.name}".`,
+          params: { name: node.name, otherName: child.name },
         })
       } else {
         seenNames.set(key, child.id)
@@ -117,7 +121,7 @@ export function validateSystem(system: AllocationSystem): Issue[] {
       nodeId: orphans[0] ?? system.rootId,
       level: 'error',
       code: 'BROKEN_TREE',
-      message: `${orphans.length} node(s) are not reachable from the root.`,
+      params: { count: orphans.length },
     })
   }
 

@@ -1,6 +1,8 @@
 import { Handle, Position } from '@xyflow/react'
-import { formatMoney, minorFactor, parseMoneyInput } from '../../domain/money'
+import { minorFactor, parseMoneyInput } from '../../domain/money'
 import { getChildren } from '../../domain/tree'
+import { useT } from '../../i18n'
+import { useFormat } from '../../i18n/format'
 import { useActiveSystem, useAllocation, useNodeIssues } from '../../store/selectors'
 import { useAllocatorStore } from '../../store/useAllocatorStore'
 import { GroupMeter } from './GroupMeter'
@@ -11,6 +13,8 @@ import { IssueBadge } from './IssueBadge'
  * whose amount is typed rather than derived.
  */
 export function RootNode() {
+  const t = useT()
+  const format = useFormat(t)
   const system = useActiveSystem()
   const result = useAllocation()
   const issuesByNode = useNodeIssues()
@@ -35,23 +39,27 @@ export function RootNode() {
         <input
           className="node__name nodrag"
           value={root.name}
-          placeholder="Income"
-          aria-label="Root node name"
+          placeholder={t('node.incomePlaceholder')}
+          aria-label={t('node.rootNameLabel')}
           onChange={(e) => renameNode(root.id, e.target.value)}
         />
         <IssueBadge issues={issuesByNode[root.id]} />
       </div>
 
       <label className="income-field">
-        <span>Monthly income</span>
+        <span>{t('topbar.monthlyIncome')}</span>
         <span className="income-field__control">
           <input
             className="nodrag nowheel"
             type="text"
             inputMode="numeric"
-            value={income === 0 ? '' : String(income / minorFactor(system.currencyDecimals))}
+            value={
+              income === 0
+                ? ''
+                : String(income / minorFactor(system.currencyDecimals))
+            }
             placeholder="0"
-            aria-label="Monthly income"
+            aria-label={t('topbar.monthlyIncome')}
             onChange={(e) => {
               const parsed = parseMoneyInput(e.target.value, system.currencyDecimals)
               setIncome(parsed ?? 0)
@@ -62,7 +70,7 @@ export function RootNode() {
       </label>
 
       <div className="node__amount node__amount--root">
-        {formatMoney(
+        {format.money(
           result.amounts[root.id] ?? 0,
           system.currency,
           system.currencyDecimals,
@@ -81,7 +89,7 @@ export function RootNode() {
         className="node__add nodrag"
         onClick={() => addChild(root.id)}
       >
-        + Add child
+        {t('common.addChild')}
       </button>
 
       <Handle type="source" position={Position.Bottom} isConnectable={false} />

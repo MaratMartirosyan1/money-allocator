@@ -50,7 +50,7 @@ export function computeAllocation(
           nodeId: system.rootId,
           level: 'error',
           code: 'MISSING_ROOT',
-          message: 'This system has no root node.',
+          params: {},
         },
       ],
       payouts,
@@ -80,7 +80,7 @@ export function computeAllocation(
         nodeId: node.id,
         level: 'error',
         code: 'PERCENT_CLAMPED',
-        message: `Children claim ${round2(percentTotal)}% of "${node.name}" — amounts were scaled down to fit 100%.`,
+        params: { name: node.name, percent: round2(percentTotal) },
       })
     }
 
@@ -105,7 +105,7 @@ export function computeAllocation(
         nodeId: node.id,
         level: 'error',
         code: 'FIXED_EXCEEDS_AVAILABLE',
-        message: `Fixed amounts under "${node.name}" need more than the ${fixedBudget === 0 ? 'nothing' : 'amount'} available — they were reduced proportionally.`,
+        params: { name: node.name, available: fixedBudget },
       })
     }
     const fixedSpent = fixedShares.reduce((acc, v) => acc + v, 0)
@@ -164,7 +164,7 @@ export function computeAllocation(
         nodeId: node.id,
         level: 'warning',
         code: 'ZERO_ALLOCATION',
-        message: `"${node.name}" receives nothing this month.`,
+        params: { name: node.name },
       })
     }
   })

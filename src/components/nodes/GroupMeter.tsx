@@ -1,6 +1,7 @@
-import { formatMoney, formatPercent } from '../../domain/money'
 import { partitionGroup } from '../../domain/tree'
 import type { AllocNode, AllocationSystem } from '../../domain/types'
+import { useT } from '../../i18n'
+import { useFormat } from '../../i18n/format'
 
 /**
  * The sibling-group constraint, shown on the parent — which is where the rule
@@ -19,6 +20,9 @@ export function GroupMeter({
   available: number
   stranded: number
 }) {
+  const t = useT()
+  const format = useFormat(t)
+
   if (siblings.length === 0) return null
 
   const { fixedKids, autoKids, percentTotal } = partitionGroup(siblings)
@@ -30,18 +34,24 @@ export function GroupMeter({
 
   const caption = (() => {
     if (overcommitted) {
-      return `Over-allocated by ${formatPercent(percentTotal - 100)}`
+      return t('meter.overAllocated', {
+        percent: format.percent(percentTotal - 100),
+      })
     }
     if (stranded > 0) {
-      return `${formatMoney(stranded, system.currency, system.currencyDecimals)} unallocated`
+      return t('meter.unallocatedMoney', {
+        amount: format.money(stranded, system.currency, system.currencyDecimals),
+      })
     }
     if (available === 0 && strandedPct > 0.001) {
-      return `${formatPercent(strandedPct)} unallocated`
+      return t('meter.unallocatedPercent', {
+        percent: format.percent(strandedPct),
+      })
     }
     if (autoKids.length > 0 || fixedKids.length > 0 || percentTotal >= 99.999) {
-      return 'Fully allocated'
+      return t('meter.full')
     }
-    return `${formatPercent(claimedPct)} allocated`
+    return t('meter.allocated', { percent: format.percent(claimedPct) })
   })()
 
   const state = overcommitted ? 'is-error' : strandedPct > 0.001 ? 'is-warn' : 'is-ok'
@@ -55,8 +65,7 @@ export function GroupMeter({
         />
       </div>
       <span className="group-meter__caption">
-        {siblings.length} {siblings.length === 1 ? 'child' : 'children'} ·{' '}
-        {caption}
+        {t('meter.children', { count: siblings.length })} · {caption}
       </span>
     </div>
   )

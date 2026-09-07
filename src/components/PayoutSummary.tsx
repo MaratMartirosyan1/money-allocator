@@ -1,5 +1,6 @@
-import { formatMoney, formatPercent } from '../domain/money'
 import { totalAccountedFor } from '../domain/engine'
+import { useT } from '../i18n'
+import { useFormat } from '../i18n/format'
 import { useActiveSystem, useAllocation } from '../store/selectors'
 import { useAllocatorStore } from '../store/useAllocatorStore'
 
@@ -9,6 +10,8 @@ import { useAllocatorStore } from '../store/useAllocatorStore'
  * adds up to the income rather than quietly losing the difference.
  */
 export function PayoutSummary() {
+  const t = useT()
+  const format = useFormat(t)
   const system = useActiveSystem()
   const result = useAllocation()
   const income = useAllocatorStore((s) => s.income)
@@ -16,7 +19,7 @@ export function PayoutSummary() {
   const selectedNodeId = useAllocatorStore((s) => s.selectedNodeId)
 
   const money = (v: number) =>
-    formatMoney(v, system.currency, system.currencyDecimals)
+    format.money(v, system.currency, system.currencyDecimals)
 
   const stranded = Object.entries(result.unallocated).filter(([, v]) => v > 0)
   const total = totalAccountedFor(result)
@@ -25,15 +28,13 @@ export function PayoutSummary() {
   return (
     <section className="panel">
       <header className="panel__head">
-        <h2>Payouts</h2>
-        <span className="panel__count">{result.payouts.length} accounts</span>
+        <h2>{t('payouts.title')}</h2>
+        <span className="panel__count">
+          {t('payouts.accounts', { count: result.payouts.length })}
+        </span>
       </header>
 
-      {income === 0 ? (
-        <p className="panel__empty">
-          Enter a monthly income on the top node to see the split.
-        </p>
-      ) : null}
+      {income === 0 ? <p className="panel__empty">{t('payouts.empty')}</p> : null}
 
       <table className="payouts">
         <tbody>
@@ -45,7 +46,7 @@ export function PayoutSummary() {
             >
               <th scope="row">
                 <span className="payouts__name">
-                  {payout.name.trim() || 'Untitled'}
+                  {payout.name.trim() || t('common.untitled')}
                 </span>
                 {payout.path.length > 1 ? (
                   <span className="payouts__path">
@@ -54,7 +55,7 @@ export function PayoutSummary() {
                 ) : null}
               </th>
               <td className="payouts__pct">
-                {formatPercent(result.percentOfIncome[payout.nodeId] ?? null, 1)}
+                {format.percent(result.percentOfIncome[payout.nodeId] ?? null, 1)}
               </td>
               <td className="payouts__amount">{money(payout.amount)}</td>
             </tr>
@@ -67,13 +68,16 @@ export function PayoutSummary() {
               onClick={() => selectNode(nodeId)}
             >
               <th scope="row">
-                <span className="payouts__name">Unallocated</span>
+                <span className="payouts__name">{t('payouts.unallocated')}</span>
                 <span className="payouts__path">
-                  under {system.nodes[nodeId]?.name.trim() || 'Untitled'}
+                  {t('payouts.under', {
+                    name:
+                      system.nodes[nodeId]?.name.trim() || t('common.untitled'),
+                  })}
                 </span>
               </th>
               <td className="payouts__pct">
-                {formatPercent(income > 0 ? (amount / income) * 100 : null, 1)}
+                {format.percent(income > 0 ? (amount / income) * 100 : null, 1)}
               </td>
               <td className="payouts__amount">{money(amount)}</td>
             </tr>
@@ -81,8 +85,10 @@ export function PayoutSummary() {
         </tbody>
         <tfoot>
           <tr className={balanced ? '' : 'is-unbalanced'}>
-            <th scope="row">Total</th>
-            <td className="payouts__pct">{income > 0 ? '100%' : '—'}</td>
+            <th scope="row">{t('payouts.total')}</th>
+            <td className="payouts__pct">
+              {income > 0 ? format.percent(100, 0) : '—'}
+            </td>
             <td className="payouts__amount">{money(total)}</td>
           </tr>
         </tfoot>
@@ -90,8 +96,7 @@ export function PayoutSummary() {
 
       {balanced ? null : (
         <p className="panel__error">
-          Accounted for {money(total)} of {money(income)} — this is a bug, please
-          report it.
+          {t('payouts.mismatch', { total: money(total), income: money(income) })}
         </p>
       )}
     </section>

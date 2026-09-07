@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { createNode, newId, starterSystem } from '../domain/factory'
+import { applySeeds } from '../domain/seeds'
 import { descendantIds, getChildren, partitionGroup } from '../domain/tree'
 import { percentHeadroom } from '../domain/validate'
 import type {
@@ -9,6 +10,7 @@ import type {
   Mode,
   NodePosition,
 } from '../domain/types'
+import { detectLocale, type Locale } from '../i18n/locales'
 
 export type ThemeMode = 'light' | 'dark' | 'system'
 
@@ -17,7 +19,10 @@ export interface AllocatorState {
   systems: Record<string, AllocationSystem>
   systemOrder: string[]
   activeSystemId: string
+  /** Which seed release the stored diagrams were installed from. */
+  seedVersion: number
   theme: ThemeMode
+  locale: Locale
   /** This month's income, in minor units. */
   income: number
   selectedNodeId: string | null
@@ -27,6 +32,7 @@ export interface AllocatorState {
   setIncome: (minorUnits: number) => void
   toggleSidebar: () => void
   setTheme: (theme: ThemeMode) => void
+  setLocale: (locale: Locale) => void
   selectNode: (id: string | null) => void
 
   addChild: (parentId: string) => string | null
@@ -124,24 +130,43 @@ function touch(draft: AllocationSystem, id: string): AllocNode | undefined {
   return clone
 }
 
-/** Exported so tests can put the store back to a known state. */
+/**
+ * A bare, unseeded state: one starter diagram and nothing else.
+ *
+ * Exported so tests can put the store back to a *known* state — which is the
+ * point of it, and why seeding is deliberately not folded in here. The seeded
+ * diagrams belong to the two real entry paths below, not to every test that
+ * needs a clean store.
+ */
 export function createInitialState() {
   const system = starterSystem()
   return {
     systems: { [system.id]: system },
     systemOrder: [system.id],
     activeSystemId: system.id,
+    seedVersion: 0,
     theme: 'system' as ThemeMode,
+    locale: detectLocale(),
     income: 0,
     selectedNodeId: null,
     sidebarOpen: true,
   }
 }
 
+/**
+ * What a first visit actually gets: the starter diagram plus the seeds. Also
+ * the fallback when a stored blob turns out to be unusable, so `starterSystem`
+ * stays as the guarantee that there is always *something* to open even if the
+ * seed file is empty.
+ */
+export function createSeededState() {
+  return applySeeds(createInitialState())
+}
+
 export const useAllocatorStore = create<AllocatorState>()(
   persist(
     (set, get) => ({
-      ...createInitialState(),
+      ...createSeededState(),
 
       setIncome: (minorUnits) => {
         set({ income: Math.max(0, Math.round(minorUnits)) })
@@ -152,6 +177,8 @@ export const useAllocatorStore = create<AllocatorState>()(
       toggleSidebar: () => set({ sidebarOpen: !get().sidebarOpen }),
 
       setTheme: (theme) => set({ theme }),
+
+      setLocale: (locale) => set({ locale }),
 
       addChild: (parentId) => {
         const state = get()
@@ -392,16 +419,29 @@ export const useAllocatorStore = create<AllocatorState>()(
         systems: state.systems,
         systemOrder: state.systemOrder,
         activeSystemId: state.activeSystemId,
+        seedVersion: state.seedVersion,
         income: state.income,
         sidebarOpen: state.sidebarOpen,
         theme: state.theme,
+        locale: state.locale,
       }),
       merge: (persisted, current) => {
         const saved = persisted as Partial<AllocatorState> | undefined
-        const active = saved?.activeSystemId
-        // Fall back to a fresh starter if the stored blob is unusable.
-        if (!saved?.systems || !active || !saved.systems[active]) return current
-        return { ...current, ...saved }
+        // Fall back to a fresh starter if the stored blob is unusable — that
+        // path re-seeds through `createInitialState`.
+        if (!saved?.systems || !saved.systemOrder) return current
+
+        // A returning browser: re-assert the seeded diagrams before the app
+        // ever reads `systems`, so a newly shipped seed is there on first
+        // paint rather than appearing after a render.
+        const seeded = applySeeds({
+          systems: saved.systems,
+          systemOrder: saved.systemOrder,
+          activeSystemId: saved.activeSystemId ?? '',
+          seedVersion: saved.seedVersion ?? 0,
+        })
+
+        return { ...current, ...saved, ...seeded }
       },
     },
   ),

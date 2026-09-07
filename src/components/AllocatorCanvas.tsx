@@ -11,7 +11,9 @@ import {
   type NodeTypes,
 } from '@xyflow/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useT } from '../i18n'
 import { layoutTree, type FlowNode } from '../layout/treeLayout'
+import { useLayoutMetrics } from '../layout/useLayoutMetrics'
 import { useActiveSystem } from '../store/selectors'
 import { useAllocatorStore } from '../store/useAllocatorStore'
 import { AllocationNode } from './nodes/AllocationNode'
@@ -23,15 +25,20 @@ const nodeTypes: NodeTypes = {
 }
 
 function Canvas() {
+  const t = useT()
   const system = useActiveSystem()
+  const metrics = useLayoutMetrics()
   const selectNode = useAllocatorStore((s) => s.selectNode)
   const setNodePosition = useAllocatorStore((s) => s.setNodePosition)
   const clearPositions = useAllocatorStore((s) => s.clearPositions)
   const { fitView } = useReactFlow()
 
-  // Positions only change when the tree or a stored position changes, so the
-  // layout is memoized on the system object identity.
-  const { nodes: laidOut, edges } = useMemo(() => layoutTree(system), [system])
+  // Positions only change when the tree, a stored position, or the card
+  // metrics change, so the layout is memoized on those identities.
+  const { nodes: laidOut, edges } = useMemo(
+    () => layoutTree(system, metrics),
+    [system, metrics],
+  )
 
   /**
    * Dragging is held locally and committed to the store on drag stop. Writing
@@ -81,7 +88,9 @@ function Canvas() {
       nodesDraggable
       nodesConnectable={false}
       edgesFocusable={false}
-      minZoom={0.2}
+      // A 248px card on a 344px phone means a wide tree has to zoom a long
+      // way out before it fits; 0.2 was not far enough.
+      minZoom={0.08}
       maxZoom={1.6}
       fitView
       fitViewOptions={{ padding: 0.18, maxZoom: 1 }}
@@ -89,6 +98,11 @@ function Canvas() {
     >
       <Background gap={20} size={1} />
       <Controls showInteractive={false} />
+      {/*
+        Hidden below 900px in CSS rather than unmounted, so that folding and
+        unfolding a Fold does not throw away the minimap's state. It costs a
+        quarter of a phone screen to show a picture of what is already on it.
+      */}
       <MiniMap pannable zoomable nodeStrokeWidth={3} />
       {hasManualPositions ? (
         <Panel position="top-right">
@@ -102,7 +116,7 @@ function Canvas() {
               })
             }}
           >
-            Tidy up
+            {t('common.tidyUp')}
           </button>
         </Panel>
       ) : null}
