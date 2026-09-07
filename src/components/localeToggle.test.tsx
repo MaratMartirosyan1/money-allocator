@@ -5,7 +5,7 @@ import {
   createInitialState,
   useAllocatorStore,
 } from '../store/useAllocatorStore'
-import { editorRoute, renderApp } from '../test/renderApp'
+import { editorRoute, openSettings, renderApp } from '../test/renderApp'
 
 const store = () => useAllocatorStore.getState()
 
@@ -16,8 +16,10 @@ beforeEach(() => {
 })
 
 describe('the language toggle', () => {
-  it('starts on English, matching the test environment locale', () => {
+  it('starts on English, matching the test environment locale', async () => {
+    const user = userEvent.setup()
     renderApp()
+    await openSettings(user)
 
     expect(screen.getByRole('button', { name: 'English' })).toHaveAttribute(
       'aria-pressed',
@@ -25,8 +27,10 @@ describe('the language toggle', () => {
     )
   })
 
-  it('labels each language in that language', () => {
+  it('labels each language in that language', async () => {
+    const user = userEvent.setup()
     renderApp()
+    await openSettings(user)
 
     // Someone who has landed on the wrong language cannot read the others, so
     // the options are never translated.
@@ -40,6 +44,7 @@ describe('the language toggle', () => {
 
     expect(screen.getByRole('heading', { name: 'Diagrams' })).toBeInTheDocument()
 
+    await openSettings(user)
     await user.click(screen.getByRole('button', { name: 'Русский' }))
 
     expect(store().locale).toBe('ru')
@@ -50,6 +55,7 @@ describe('the language toggle', () => {
   it('reflects the language onto <html lang> for screen readers', async () => {
     const user = userEvent.setup()
     renderApp()
+    await openSettings(user)
 
     await user.click(screen.getByRole('button', { name: 'Հայերեն' }))
     expect(document.documentElement.lang).toBe('hy')
@@ -65,6 +71,7 @@ describe('the language toggle', () => {
 
     expect(screen.getByText('Everything adds up.')).toBeInTheDocument()
 
+    await openSettings(user)
     await user.click(screen.getByRole('button', { name: 'Русский' }))
 
     expect(screen.getByText('Всё сходится.')).toBeInTheDocument()
@@ -83,6 +90,7 @@ describe('the language toggle', () => {
     renderApp(editorRoute(store().activeSystemId))
     expect(screen.getByText(/stays unallocated/)).toBeInTheDocument()
 
+    await openSettings(user)
     await user.click(screen.getByRole('button', { name: 'Русский' }))
 
     expect(screen.getByText(/не распределены/)).toBeInTheDocument()
@@ -100,6 +108,7 @@ describe('the language toggle', () => {
   it('survives a reload, because the choice is persisted', async () => {
     const user = userEvent.setup()
     renderApp()
+    await openSettings(user)
 
     await user.click(screen.getByRole('button', { name: 'Հայերեն' }))
 

@@ -3,8 +3,7 @@ import { getChildren } from '../domain/tree'
 import type { AllocationSystem } from '../domain/types'
 import { useT, type Translate } from '../i18n'
 import { useFormat, type Formatters } from '../i18n/format'
-import { LocaleToggle } from '../components/LocaleToggle'
-import { ThemeToggle } from '../components/ThemeToggle'
+import { SettingsMenu } from '../components/SettingsMenu'
 import { useAllocatorStore } from '../store/useAllocatorStore'
 
 /** "Charity 10%", "Rent 300,000", "Living auto" — the top-level split. */
@@ -26,7 +25,6 @@ function splitSummary(
 function DiagramCard({ system }: { system: AllocationSystem }) {
   const t = useT()
   const format = useFormat(t)
-  const navigate = useNavigate()
   const renameSystem = useAllocatorStore((s) => s.renameSystem)
   const duplicateSystem = useAllocatorStore((s) => s.duplicateSystem)
   const deleteSystem = useAllocatorStore((s) => s.deleteSystem)
@@ -72,7 +70,19 @@ function DiagramCard({ system }: { system: AllocationSystem }) {
       </p>
 
       <div className="card__actions">
-        <Link className="btn btn--primary" to={`/d/${system.id}`}>
+        {/*
+          This link opens the whole card, not just itself: `.card__open` gives
+          it a pseudo-element stretched over the card (see index.css), so a
+          click anywhere that is not the name field or one of the buttons
+          below activates it.
+
+          Doing it this way rather than with an onClick on the <li> is what
+          keeps it a real link — cmd-click opens a new tab, right-click offers
+          "Open link in new tab", and the status bar shows the destination.
+          Comparing two allocations side by side is a stated use for this app,
+          so that is worth keeping.
+        */}
+        <Link className="btn btn--primary card__open" to={`/d/${system.id}`}>
           {t('common.open')}
         </Link>
         <button
@@ -98,16 +108,6 @@ function DiagramCard({ system }: { system: AllocationSystem }) {
           {t('common.delete')}
         </button>
       </div>
-
-      {/* Whole-card affordance, kept out of the tab order so the buttons
-          above stay the keyboard path. */}
-      <button
-        type="button"
-        className="card__hit"
-        tabIndex={-1}
-        aria-hidden="true"
-        onClick={() => navigate(`/d/${system.id}`)}
-      />
     </li>
   )
 }
@@ -137,8 +137,7 @@ export function DiagramsPage() {
           {t('app.name')}
         </span>
         <div className="page__tools">
-          <LocaleToggle />
-          <ThemeToggle />
+          <SettingsMenu />
         </div>
       </header>
 

@@ -22,6 +22,8 @@ export const ru: Dictionary = {
 
   'language.group': 'Язык',
 
+  'settings.title': 'Настройки',
+
   'topbar.diagramName': 'Название схемы',
   'topbar.untitledDiagram': 'Схема без названия',
   'topbar.income': 'Доход',

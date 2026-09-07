@@ -310,16 +310,15 @@ Decisions that follow from the device list:
   of what is already on screen. Hidden below 900px.
 - **44px tap targets** under `(pointer: coarse)` — the node delete `×` is 22px
   on desktop, which is a coin-flip with a thumb.
-- **The top bar becomes three fixed rows** (name / income / controls) rather
-  than one wrapping row, because what wraps where would otherwise depend on
-  the length of the diagram name and the number of digits in the income —
-  which is how a bar ends up fine in English and broken in Armenian. Three
-  rows cost ~135px of an 874px phone; two would need the controls to share a
-  line, and at 344px the language, theme and panel controls come to ~240px on
-  their own. The three groups are wrapped in `display: contents` elements, so
-  on desktop the bar is still one flat flex row and **no `order` override is
-  needed anywhere** — visual order and DOM order stay the same order, which is
-  the one a keyboard follows.
+- **The top bar's line breaks are stated, not left to `flex-wrap`**, because
+  otherwise where it breaks depends on the length of the diagram name and the
+  number of digits in the income — which is how a bar ends up fine in English
+  and broken in Armenian. Line one is the diagram name; line two is the
+  income, its readout and the controls; below 380px the controls take a third
+  line of their own. The groups are wrapped in `display: contents` elements,
+  so on desktop the bar is still one flat flex row and **no `order` override
+  is needed anywhere** — visual order and DOM order stay the same order, which
+  is the one a keyboard follows.
 - **The group meter's caption gets a fixed two-line box.** Its height feeds the
   layout estimate, and Russian and Armenian run 20–30% longer than English, so
   whether it wraps is language-dependent. Pinning the box keeps the estimate
@@ -377,6 +376,67 @@ translation of a message uses exactly the placeholders its English source does
 — a dropped `{name}` renders a sentence with no subject, an added one renders a
 literal brace.
 
+### Phase 9a — Settings behind one gear ✅
+
+Language and theme first shipped as two permanently visible segmented controls
+in the header. That is the wrong trade: both are set once and never revisited,
+and together they cost ~240px — which on a 344px phone is a whole row of the
+top bar, spent on decisions nobody is making.
+
+So: one gear, one popover, two labelled groups. It gives that row back (the
+income and its readout now share a line with the controls) and drops the
+header to a single 32px button on desktop.
+
+The popover is deliberately **non-modal** — it dims nothing and traps nothing,
+because it holds two three-way choices, not a task. It still owes the rest of
+the contract, which is where the work actually is:
+
+- `aria-expanded` / `aria-haspopup="dialog"` / `aria-controls` on the trigger,
+  `role="dialog"` plus a name on the panel.
+- **Escape closes and returns focus to the gear**; an outside *click* closes
+  but leaves focus where the user put it. Those are different gestures and
+  deserve different answers.
+- Focus moves into the panel on open, so its name is announced and the next
+  Tab lands on the first control rather than back out in the bar.
+- **Picking a setting does not close it.** Two settings behind one trigger
+  means closing on the first pick would charge another round trip for the
+  second.
+- The visible caption *is* each group's accessible name (`aria-labelledby`),
+  rather than a second copy of it sitting beside the group's own `aria-label`.
+
+The one non-obvious consequence is in the tests: the pickers are no longer on
+screen at render, so every test that reaches for them goes through an
+`openSettings(user)` helper first — and a test that switches to Russian
+mid-flight has to stop calling the popover "Settings".
+
+### Phase 6a — The whole card opens the diagram ✅
+
+The list card had an invisible button stretched behind its content, which
+meant only the *gaps between the text* opened it: the card looked interactive,
+then ignored you whenever you happened to aim at a word. Worse as a card gets
+fuller, and worst on a phone, where the gaps are the thing thumbs miss.
+
+Replaced with the stretched-link pattern — a `::after` on the **Open** link,
+`inset: 0` against the card. The behaviour is what a click handler on the
+`<li>` would give, but it stays a *link*: cmd-click opens a new tab,
+right-click offers "Open link in new tab", the status bar shows the
+destination, and the keyboard path is a real anchor rather than a list item
+impersonating one. Comparing two allocations side by side is a stated use for
+this app, so those are not incidental.
+
+Two constraints come with it. Nothing between the link and `.card` may be
+positioned, or `inset: 0` resolves against that element instead of the card —
+so the old blanket `.card > * { position: relative }` had to go, and only the
+parts that must stay above the overlay (the name field, duplicate, delete) are
+raised. And the summary text underneath is no longer selectable, which is the
+trade the pattern makes and is the right way round here.
+
+**Not directly testable:** jsdom does no layout, so an overlay intercepts
+nothing there and "click the card body" cannot be expressed. The tests assert
+what remains real — that the mechanism is a link with the right `href` and the
+overlay class, and that the name field and the two buttons still do their own
+jobs rather than opening the card.
+
 ### Phase 10 — Seeded starter diagrams ✅
 
 Four real allocation diagrams ship with the app, so a new browser opens onto
@@ -424,7 +484,7 @@ src/
   store/       useSystemStore.ts selectors.ts
   i18n/        locales.ts en.ts ru.ts hy.ts plural.ts index.ts format.ts issues.ts
   layout/      treeLayout.ts
-  components/  AllocatorCanvas.tsx LocaleToggle.tsx
+  components/  AllocatorCanvas.tsx SettingsMenu.tsx LocaleToggle.tsx
                nodes/RootNode.tsx nodes/AllocationNode.tsx
                IncomeBar.tsx PayoutSummary.tsx IssueList.tsx
   App.tsx
@@ -453,6 +513,8 @@ sheet instead of a side column, and a layout that knows its cards get taller
 when inputs go to 16px for iOS. It speaks **English, Russian and Armenian**
 through hand-rolled dictionaries with real `Intl.PluralRules` plurals, which
 forced the engine to stop emitting English prose and start emitting issue
-codes plus params. And it **seeds four fixed-id starter diagrams** into
+codes plus params; language and theme live together behind **one gear** rather
+than two permanent banners, in a non-modal popover that answers Escape and
+outside-click differently on purpose. And it **seeds four fixed-id starter diagrams** into
 `localStorage` on every boot, inserting what is missing and rewriting all four
 when `SEED_VERSION` is bumped.

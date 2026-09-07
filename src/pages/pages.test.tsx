@@ -55,6 +55,61 @@ describe('the diagrams list page', () => {
     expect(screen.getByRole('heading', { name: 'Payouts' })).toBeInTheDocument()
   })
 
+  describe('opening a card by clicking it', () => {
+    /**
+     * The card is opened by a pseudo-element on the Open link stretched across
+     * it, not by a handler on the <li>. jsdom does no layout, so an overlay
+     * cannot intercept anything there and "click the card body" is simply not
+     * expressible as a test — what *is* checkable is that the mechanism is a
+     * real link pointed at the right place, and that the parts which must stay
+     * above the overlay still do their own jobs.
+     */
+    it('opens through a real link, so it can be opened in a new tab', () => {
+      renderApp()
+      const open = within(cardFor('My allocation')).getByRole('link', {
+        name: 'Open',
+      })
+
+      expect(open).toHaveAttribute('href', `/d/${store().activeSystemId}`)
+      // The class is the overlay: without it only the link itself is clickable.
+      expect(open).toHaveClass('card__open')
+    })
+
+    it('still lets the name be renamed rather than opening the card', async () => {
+      const user = userEvent.setup()
+      renderApp()
+
+      const name = screen.getByLabelText('Name of My allocation')
+      await user.clear(name)
+      await user.type(name, 'Household')
+
+      expect(screen.getByLabelText('Name of Household')).toBeInTheDocument()
+      // Still on the list — typing a name must not have navigated anywhere.
+      expect(screen.getByRole('heading', { name: 'Diagrams' })).toBeInTheDocument()
+    })
+
+    it('keeps duplicate and delete out of the open target', async () => {
+      const user = userEvent.setup()
+      vi.spyOn(window, 'confirm').mockReturnValue(true)
+      renderApp()
+
+      await user.click(
+        within(cardFor('My allocation')).getByRole('button', {
+          name: 'Duplicate My allocation',
+        }),
+      )
+      expect(screen.getByRole('heading', { name: 'Diagrams' })).toBeInTheDocument()
+
+      await user.click(
+        within(cardFor('My allocation copy')).getByRole('button', {
+          name: 'Delete My allocation copy',
+        }),
+      )
+      expect(screen.getByRole('heading', { name: 'Diagrams' })).toBeInTheDocument()
+      expect(screen.queryByLabelText('Name of My allocation copy')).toBeNull()
+    })
+  })
+
   it('creates a diagram and drops straight into its editor', async () => {
     const user = userEvent.setup()
     renderApp()

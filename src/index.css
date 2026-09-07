@@ -1184,6 +1184,87 @@ input {
   box-shadow: 0 0 0 2px var(--accent);
 }
 
+/* -------------------------------------------------------------- settings -- */
+.settings {
+  position: relative;
+  flex: none;
+}
+
+.settings__trigger {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink-2);
+}
+
+.settings__trigger:hover,
+.settings__trigger[aria-expanded='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.settings__trigger:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+/* Right-anchored: the gear sits near the right edge on every screen this
+   appears on, so opening left is the only direction with room. */
+.settings__panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 184px;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+}
+
+.settings__panel:focus-visible {
+  outline: none;
+}
+
+.settings__section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.settings__label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-3);
+}
+
+/* Inside the popover the toggles have room to fill the width evenly, rather
+   than hugging their icons the way they did in the header. */
+.settings__panel .theme-toggle,
+.settings__panel .locale-toggle {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.settings__panel .theme-toggle button,
+.settings__panel .locale-toggle button {
+  width: auto;
+  min-width: 0;
+  height: 28px;
+}
+
 /* -------------------------------------------------------- locale toggle -- */
 .locale-toggle {
   display: flex;
@@ -1566,19 +1647,46 @@ input {
   box-shadow: var(--shadow-lg);
 }
 
-/* Sits behind the real controls so clicking the card body opens it. */
-.card__hit {
+/*
+ * The whole card opens the diagram.
+ *
+ * The mechanism is the "Open" link's own ::after, stretched across the card,
+ * rather than a click handler on the <li>. That keeps it a *link*: cmd-click
+ * opens a new tab, right-click offers "Open link in new tab", the status bar
+ * shows where it goes, and the keyboard path is a real anchor rather than a
+ * <li> pretending to be one. A navigate() call would look identical and throw
+ * all of that away.
+ *
+ * The previous version of this was an invisible button behind the content,
+ * which meant only the *gaps* between the text were clickable — the card
+ * looked interactive and then ignored you if you happened to aim at a word.
+ *
+ * Nothing between the link and .card may be positioned, or `inset: 0` would
+ * resolve against that element instead of against the card.
+ */
+.card__open::after {
+  content: '';
   position: absolute;
   inset: 0;
-  z-index: 0;
-  border: 0;
+  z-index: 1;
   border-radius: var(--radius);
-  background: transparent;
 }
 
-.card > *:not(.card__hit) {
+/* The genuinely interactive parts sit above the overlay: the name is an
+   editable field, and duplicate/delete are not "open". Everything else —
+   the split summary, the counts, the saved line — deliberately sits under it
+   and opens the card. */
+.card__name,
+.card__actions .btn:not(.card__open) {
   position: relative;
-  z-index: 1;
+  z-index: 2;
+}
+
+/* The link stands for the whole card now, so the whole card takes the focus
+   ring when it is tabbed to. */
+.card:has(.card__open:focus-visible) {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft), var(--shadow-lg);
 }
 
 .card__name {
@@ -1748,8 +1856,8 @@ input {
 /* ---- ≤ 640px: phones ----------------------------------------------------- */
 @media (max-width: 640px) {
   .topbar {
-    flex-direction: column;
-    align-items: stretch;
+    flex-wrap: wrap;
+    align-items: center;
     gap: 8px;
     padding: 8px 12px;
     padding-top: calc(8px + env(safe-area-inset-top));
@@ -1758,14 +1866,15 @@ input {
   }
 
   /*
-   * The wrappers become real rows here — the whole reason they exist. Three
-   * fixed lines beat one wrapping line: what wraps where then depends on how
-   * long the diagram name is and how many digits the income has, which is how
-   * a layout ends up fine in English and broken in Armenian.
+   * The wrappers become real rows here — the whole reason they exist. Where a
+   * line breaks is stated rather than left to flex-wrap, because otherwise it
+   * would depend on how long the diagram name is and how many digits the
+   * income has: the way a bar ends up fine in English and broken in Armenian.
    *
-   * Three lines costs about 135px of an 874px phone. Two lines would need the
-   * tools group to sit beside something, and at 344px the language, theme and
-   * panel controls already come to ~240px on their own.
+   * Line one is the diagram name, on its own. Line two is the income, its
+   * readout, and the controls — which fit beside it now that the language and
+   * theme pickers have collapsed into one gear (two buttons, ~90px, where the
+   * two segmented toggles came to ~240px and needed a line of their own).
    */
   .topbar__row {
     display: flex;
@@ -1774,7 +1883,16 @@ input {
     min-width: 0;
   }
 
+  .topbar__row--main {
+    flex: 1 0 100%;
+  }
+
+  .topbar__row--income {
+    flex: 1 1 auto;
+  }
+
   .topbar__row--tools {
+    flex: none;
     justify-content: flex-end;
   }
 
@@ -1901,6 +2019,12 @@ input {
     display: none;
   }
 
+  /* 344px cannot hold the income, its readout and the controls on one line,
+     so the controls drop to a third row here and nowhere else. */
+  .topbar__row--income {
+    flex: 1 0 100%;
+  }
+
   .page__brand {
     font-size: 14px;
     gap: 7px;
@@ -1955,6 +2079,21 @@ input {
   .locale-toggle button {
     min-width: 34px;
     height: 32px;
+  }
+
+  .settings__trigger {
+    width: 40px;
+    height: 40px;
+  }
+
+  .settings__panel {
+    min-width: 220px;
+    padding: 14px;
+  }
+
+  .settings__panel .theme-toggle button,
+  .settings__panel .locale-toggle button {
+    height: 34px;
   }
 
   .topbar__toggle {

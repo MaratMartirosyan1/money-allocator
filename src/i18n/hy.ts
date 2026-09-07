@@ -22,6 +22,8 @@ export const hy: Dictionary = {
 
   'language.group': 'Լեզու',
 
+  'settings.title': 'Կարգավորումներ',
+
   'topbar.diagramName': 'Սխեմայի անվանումը',
   'topbar.untitledDiagram': 'Անանուն սխեմա',
   'topbar.income': 'Եկամուտ',

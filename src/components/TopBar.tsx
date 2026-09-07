@@ -4,8 +4,7 @@ import { useT } from '../i18n'
 import { useFormat } from '../i18n/format'
 import { useActiveSystem, useAllocation } from '../store/selectors'
 import { useAllocatorStore } from '../store/useAllocatorStore'
-import { LocaleToggle } from './LocaleToggle'
-import { ThemeToggle } from './ThemeToggle'
+import { SettingsMenu } from './SettingsMenu'
 
 /** Ties the toggle to the region it controls, for screen readers. */
 export const SIDEBAR_ID = 'side-panels'
@@ -96,8 +95,7 @@ export function TopBar() {
       </div>
 
       <div className="topbar__row topbar__row--tools">
-        <LocaleToggle />
-        <ThemeToggle />
+        <SettingsMenu />
 
         <button
           type="button"

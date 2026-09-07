@@ -53,13 +53,13 @@ const OPTIONS: Array<{
   { mode: 'system', labelKey: 'theme.system', icon: AutoIcon },
 ]
 
-export function ThemeToggle() {
+export function ThemeToggle({ labelledBy }: { labelledBy: string }) {
   const t = useT()
   const theme = useAllocatorStore((s) => s.theme)
   const setTheme = useAllocatorStore((s) => s.setTheme)
 
   return (
-    <div className="theme-toggle" role="group" aria-label={t('theme.group')}>
+    <div className="theme-toggle" role="group" aria-labelledby={labelledBy}>
       {OPTIONS.map(({ mode, labelKey, icon: Icon }) => {
         const label = t(labelKey)
         return (

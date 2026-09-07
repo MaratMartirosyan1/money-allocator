@@ -36,11 +36,11 @@ nothing leaves the browser.
 
 ## Languages
 
-The interface is available in **English, Русский and Հայերեն**, switchable from
-the header on any screen and remembered with your other preferences. Numbers,
-currency and "3 minutes ago" follow the chosen language too, and plurals go
-through `Intl.PluralRules`, so Russian gets all three of its forms rather than
-a guess.
+The interface is available in **English, Русский and Հայերեն**. Language and
+theme sit together behind the **gear** in the header, on every screen, and are
+remembered with your other preferences. Numbers, currency and "3 minutes ago"
+follow the chosen language too, and plurals go through `Intl.PluralRules`, so
+Russian gets all three of its forms rather than a guess.
 
 Translations live in `src/i18n/`. English is the source dictionary and its keys
 *are* the key type, so a locale missing a key is a compile error, not a blank
@@ -49,8 +49,8 @@ label at runtime.
 ## On a phone
 
 The whole app works on a phone, down to a folded Galaxy Z Fold at 344px. The
-top bar reflows into three rows, the payouts and checks panel becomes a bottom
-sheet you swipe away, tap targets and inputs grow for touch — the last of which
+top bar reflows onto two rows (three at the very narrowest), the payouts and
+checks panel becomes a bottom sheet you swipe away, tap targets and inputs grow for touch — the last of which
 also stops iOS zooming in on every field it focuses — and the canvas pans and
 pinch-zooms as you would expect. Safe-area insets keep controls clear of the
 iPhone's notch and home indicator.
@@ -82,6 +82,10 @@ engine could not walk.
 
 The URL owns which diagram is open, so links are shareable, refresh keeps you
 in place, and the browser's own back button behaves.
+
+Clicking anywhere on a diagram card opens it — the **Open** button is there for
+the keyboard and for cmd-clicking into a new tab, not because you have to aim
+at it. The name field and the duplicate/delete buttons keep their own jobs.
 
 You can keep as many diagrams as you like — one per scenario, say a household
 budget and a freelance one. **There is no save button**: every edit is written

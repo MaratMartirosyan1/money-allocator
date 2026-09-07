@@ -1,4 +1,3 @@
-import { useT } from '../i18n'
 import { LOCALES } from '../i18n/locales'
 import { useAllocatorStore } from '../store/useAllocatorStore'
 
@@ -6,13 +5,12 @@ import { useAllocatorStore } from '../store/useAllocatorStore'
  * Language picker. Each option is labelled in its own language — someone who
  * has landed on the wrong one cannot read the others.
  */
-export function LocaleToggle() {
-  const t = useT()
+export function LocaleToggle({ labelledBy }: { labelledBy: string }) {
   const locale = useAllocatorStore((s) => s.locale)
   const setLocale = useAllocatorStore((s) => s.setLocale)
 
   return (
-    <div className="locale-toggle" role="group" aria-label={t('language.group')}>
+    <div className="locale-toggle" role="group" aria-labelledby={labelledBy}>
       {LOCALES.map((option) => (
         <button
           key={option.code}

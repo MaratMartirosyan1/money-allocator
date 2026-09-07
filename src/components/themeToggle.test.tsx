@@ -5,7 +5,7 @@ import {
   createInitialState,
   useAllocatorStore,
 } from '../store/useAllocatorStore'
-import { renderApp } from '../test/renderApp'
+import { openSettings, renderApp } from '../test/renderApp'
 
 const store = () => useAllocatorStore.getState()
 const root = () => document.documentElement
@@ -17,8 +17,10 @@ beforeEach(() => {
 })
 
 describe('the theme toggle', () => {
-  it('starts on "match system", which sets no override', () => {
+  it('starts on "match system", which sets no override', async () => {
+    const user = userEvent.setup()
     renderApp()
+    await openSettings(user)
 
     expect(
       screen.getByRole('button', { name: 'Match system' }),
@@ -29,6 +31,7 @@ describe('the theme toggle', () => {
   it('applies dark to the document', async () => {
     const user = userEvent.setup()
     renderApp()
+    await openSettings(user)
 
     await user.click(screen.getByRole('button', { name: 'Dark' }))
 
@@ -39,6 +42,7 @@ describe('the theme toggle', () => {
   it('applies light, which must override a dark OS preference', async () => {
     const user = userEvent.setup()
     renderApp()
+    await openSettings(user)
 
     await user.click(screen.getByRole('button', { name: 'Light' }))
 
@@ -48,6 +52,7 @@ describe('the theme toggle', () => {
   it('drops the override when handed back to the system', async () => {
     const user = userEvent.setup()
     renderApp()
+    await openSettings(user)
 
     await user.click(screen.getByRole('button', { name: 'Dark' }))
     await user.click(screen.getByRole('button', { name: 'Match system' }))
@@ -58,6 +63,7 @@ describe('the theme toggle', () => {
   it('marks only the active option as pressed', async () => {
     const user = userEvent.setup()
     renderApp()
+    await openSettings(user)
 
     await user.click(screen.getByRole('button', { name: 'Dark' }))
 
@@ -77,6 +83,7 @@ describe('the theme toggle', () => {
   it('reapplies the saved choice on a remount', async () => {
     const user = userEvent.setup()
     const first = renderApp()
+    await openSettings(user)
     await user.click(screen.getByRole('button', { name: 'Dark' }))
     first.unmount()
     root().removeAttribute('data-theme')

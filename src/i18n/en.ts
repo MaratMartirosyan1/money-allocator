@@ -34,6 +34,8 @@ export const en = {
 
   'language.group': 'Language',
 
+  'settings.title': 'Settings',
+
   'topbar.diagramName': 'Diagram name',
   'topbar.untitledDiagram': 'Untitled diagram',
   'topbar.income': 'Income',
